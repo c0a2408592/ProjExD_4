@@ -126,6 +126,7 @@ class Bomb(pg.sprite.Sprite):
         self.rect.centerx = emy.rect.centerx
         self.rect.centery = emy.rect.centery+emy.rect.height//2
         self.speed = 6
+        self.state = "active"
 
     def update(self):
         """
@@ -287,6 +288,33 @@ class Shield(pg.sprite.Sprite):
         self.life -= 1
         if self.life < 0:  # ライフが0未満になったら消滅
             self.kill()
+            
+            
+class EMP:
+    def __init__(self, emys: pg.sprite.Group, bombs: pg.sprite.Group, screen: pg.Surface):
+        self.emys = emys
+        self.bombs = bombs
+        self.screen = screen
+
+    def activate(self):
+        # 画面全体に黄色透明矩形を描画（0.05秒）
+        emp_surf = pg.Surface((WIDTH, HEIGHT))
+        emp_surf.fill((255, 255, 0))
+        emp_surf.set_alpha(100)
+        self.screen.blit(emp_surf, (0, 0))
+        pg.display.update()
+        pg.time.delay(50)
+
+        # 敵機無効化：爆弾落とせない＋ラプラシアンフィルタ
+        for emy in self.emys:
+            emy.interval = math.inf
+            emy.image = pg.transform.laplacian(emy.image)
+
+        # 爆弾無効化：速度半減＆state追加（衝突しても爆発しない）
+        for bomb in self.bombs:
+            bomb.speed = bomb.speed / 2
+            bomb.state = "inactive"            
+            
 
 def main():
     pg.display.set_caption("真！こうかとん無双")
@@ -299,6 +327,8 @@ def main():
     beams = pg.sprite.Group()
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
+    
+    emp = EMP(emys, bombs, screen)
 
     grvs = pg.sprite.Group()
     shields = pg.sprite.Group()   # 防御壁
@@ -317,6 +347,10 @@ def main():
                 if score.value >= 200:
                     grvs.add(Gravity(400))   # 400フレーム発動
                     score.value -= 200       # スコア消費
+            if event.type == pg.KEYDOWN and event.key == pg.K_e:
+                if score.value >= 20:
+                    score.value -= 20
+                    emp.activate()   # EMP発動
             
             # シールド生成
             if event.type == pg.KEYDOWN and event.key == pg.K_s:
@@ -343,8 +377,11 @@ def main():
             exps.add(Explosion(bomb, 50))  # 爆発エフェクト
             score.value += 1  # 1点アップ
 
-        for bomb in pg.sprite.spritecollide(bird, bombs, True):  # こうかとんと衝突した爆弾リスト
-            bird.change_img(8, screen)  # こうかとん悲しみエフェクト
+        for bomb in pg.sprite.spritecollide(bird, bombs, True):
+            if getattr(bomb, "state", "active") == "inactive":
+                # 無効化された爆弾は消えるだけ
+                continue
+            bird.change_img(8, screen)
             score.update(screen)
             pg.display.update()
             time.sleep(2)
