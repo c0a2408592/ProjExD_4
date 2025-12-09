@@ -249,6 +249,7 @@ class Shield(pg.sprite.Sprite):
     発動条件:「s」キー押下、スコアが50以上、防御壁が他に存在しない
     消費スコア:50
     """
+
     def __init__(self, bird: Bird, life: int):
         super().__init__()
         self.life = life
@@ -282,7 +283,7 @@ def main():
     beams = pg.sprite.Group()
     exps = pg.sprite.Group()
     emys = pg.sprite.Group()
-    shields = pg.sprite.Group()  # 防御壁
+    shields = pg.sprite.Group()   # 防御壁
 
     tmr = 0
     clock = pg.time.Clock()
@@ -291,12 +292,16 @@ def main():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return 0
+            
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 beams.add(Beam(bird))
+            
+            # シールド生成
             if event.type == pg.KEYDOWN and event.key == pg.K_s:
                 if score.value >= 50 and len(shields) == 0:
                     shields.add(Shield(bird, 400))
                     score.value -= 50
+
         screen.blit(bg_img, [0, 0])
 
         if tmr%200 == 0:  # 200フレームに1回，敵機を出現させる
