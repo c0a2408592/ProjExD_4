@@ -72,6 +72,8 @@ class Bird(pg.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = xy
         self.speed = 10
+        self.state = "normal"
+        self.hyper_life = 0 
 
     def change_img(self, num: int, screen: pg.Surface):
         """
@@ -88,6 +90,11 @@ class Bird(pg.sprite.Sprite):
         引数1 key_lst：押下キーの真理値リスト
         引数2 screen：画面Surface
         """
+        if self.state == "hyper":
+            self.hyper_life -= 1
+            if self.hyper_life < 0:
+                self.state = "normal"
+
         sum_mv = [0, 0]
         for k, mv in __class__.delta.items():
             if key_lst[k]:
@@ -99,6 +106,8 @@ class Bird(pg.sprite.Sprite):
         if not (sum_mv[0] == 0 and sum_mv[1] == 0):
             self.dire = tuple(sum_mv)
             self.image = self.imgs[self.dire]
+        if self.state == "hyper": 
+            self.image = pg.transform.laplacian(self.image)
         screen.blit(self.image, self.rect)
 
 
@@ -366,9 +375,12 @@ def main():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return 0
-            
             if event.type == pg.KEYDOWN and event.key == pg.K_SPACE:
                 beams.add(Beam(bird))
+            if event.type == pg.KEYDOWN and event.key == pg.K_RSHIFT and score.value > 100 and bird.state == "normal":
+                bird.state = "hyper" 
+                bird.hyper_life = 500
+                score.value -= 100 
             if event.type == pg.KEYDOWN and event.key == pg.K_RETURN:
                 if score.value >= 200:
                     grvs.add(Gravity(400))   # 400フレーム発動
@@ -406,6 +418,11 @@ def main():
         for bomb in pg.sprite.spritecollide(bird, bombs, True):
             if getattr(bomb, "state", "active") == "inactive":
                 # 無効化された爆弾は消えるだけ
+                continue
+            if bird.state == "hyper":
+                # 無敵状態時はゲームオーバーにならず、爆弾を爆発させ、スコアを1点アップ 
+                exps.add(Explosion(bomb, 50))
+                score.value += 1
                 continue
             bird.change_img(8, screen)
             score.update(screen)
